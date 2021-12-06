@@ -1,21 +1,25 @@
+use std::collections::HashMap;
+
 static DEMO_INPUT: &str = "3,4,3,1,2";
 
-static INPUT: &str = "1,1,1,1,2,1,1,4,1,4,3,1,1,1,1,1,1,1,1,4,1,3,1,1,1,5,1,3,1,4,1,2,1,1,5,1,1,1,1,1,1,1,1,1,1,3,4,1,5,1,1,1,1,1,1,1,1,1,3,1,4,1,1,1,1,3,5,1,1,2,1,1,1,1,4,4,1,1,1,4,1,1,4,2,4,4,5,1,1,1,1,2,3,1,1,4,1,5,1,1,1,3,1,1,1,1,5,5,1,2,2,2,2,1,1,2,1,1,1,1,1,3,1,1,1,2,3,1,5,1,1,1,2,2,1,1,1,1,1,3,2,1,1,1,4,3,1,1,4,1,5,4,1,4,1,1,1,1,1,1,1,1,1,1,2,2,4,5,1,1,1,1,5,4,1,3,1,1,1,1,4,3,3,3,1,2,3,1,1,1,1,1,1,1,1,2,1,1,1,5,1,3,1,4,3,1,3,1,5,1,1,1,1,3,1,5,1,2,4,1,1,4,1,4,4,2,1,2,1,3,3,1,4,4,1,1,3,4,1,1,1,2,5,2,5,1,1,1,4,1,1,1,1,1,1,3,1,5,1,2,1,1,1,1,1,4,4,1,1,1,5,1,1,5,1,2,1,5,1,1,1,1,1,1,1,1,1,1,1,1,3,2,4,1,1,2,1,1,3,2";
-
 fn main() {
-    let mut fish = INPUT.split(',').map(|s| s.parse::<u8>().unwrap()).collect::<Vec<_>>();
-    for day in 1..257 {
-        let mut num_extra_fish = 0;
-        for f in fish.iter_mut() {
-            if *f == 0 {
-                num_extra_fish += 1;
-                *f = 6;
-            } else {
-                *f -= 1;
-            }
-        }
-        fish.extend(std::iter::repeat(8u8).take(num_extra_fish));
+    let fish = DEMO_INPUT
+        .split(',')
+        .map(|s| s.parse::<u8>().unwrap())
+        .collect::<Vec<_>>();
+    let mut fish_by_age: HashMap<u8, u64> = HashMap::new();
+    for f in fish {
+        *fish_by_age.entry(f).or_default() += 1;
     }
-    println!("Total fish {}", fish.len());
+    println!("{:?}", fish_by_age);
+    for _ in 1..257 {
+        let day_zero_fish = *fish_by_age.entry(0u8).or_default();
+        for age in 1..9 {
+            *fish_by_age.entry(age - 1).or_default() = *fish_by_age.entry(age).or_default();
+        }
+        *fish_by_age.entry(6u8).or_default() += day_zero_fish;
+        *fish_by_age.entry(8u8).or_default() = day_zero_fish;
+        //println!("{:?}", fish_by_age);
+    }
+    println!("Total fish {}", fish_by_age.into_values().sum::<u64>());
 }
-
