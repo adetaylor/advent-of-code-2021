@@ -13,13 +13,13 @@ fn main() {
     }
     println!("{:?}", fish_by_age);
     for _ in 1..257 {
-        let day_zero_fish = *fish_by_age.entry(0u8).or_default();
+        let day_zero_fish = fish_by_age.get(&0u8).cloned().unwrap_or_default();
         for age in 1..9 {
-            *fish_by_age.entry(age - 1).or_default() = *fish_by_age.entry(age).or_default();
+            *fish_by_age.entry(age - 1).or_default() =
+                fish_by_age.get(&age).cloned().unwrap_or_default();
         }
         *fish_by_age.entry(6u8).or_default() += day_zero_fish;
         *fish_by_age.entry(8u8).or_default() = day_zero_fish;
-        //println!("{:?}", fish_by_age);
     }
     println!("Total fish {}", fish_by_age.into_values().sum::<u64>());
 }
