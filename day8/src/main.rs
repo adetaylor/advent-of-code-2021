@@ -39,45 +39,42 @@ impl Entry {
     }
 
     fn deduce_digits(&self) -> HashMap<u8, SegmentSet> {
+        // The answer we want to assemble - the pattern of segments for each digit.
+        let mut digit_patterns: HashMap<u8, SegmentSet> = HashMap::new();
+        // Some we know based on the number of illuminated segments.
         let signal_patterns_by_length: HashMap<usize, &SegmentSet> =
             self.signal_patterns.iter().map(|p| (p.len(), p)).collect();
-        let mut digit_patterns: HashMap<u8, SegmentSet> = HashMap::new();
-        digit_patterns.insert(
-            7u8,
-            signal_patterns_by_length
-                .get(&3usize)
-                .cloned()
-                .unwrap()
-                .clone(),
+        Self::insert_known_segment_count_pattern(
+            &mut digit_patterns,
+            7,
+            3,
+            &signal_patterns_by_length,
         );
-        digit_patterns.insert(
-            1u8,
-            signal_patterns_by_length
-                .get(&2usize)
-                .cloned()
-                .unwrap()
-                .clone(),
+        Self::insert_known_segment_count_pattern(
+            &mut digit_patterns,
+            1,
+            2,
+            &signal_patterns_by_length,
         );
-        digit_patterns.insert(
-            4u8,
-            signal_patterns_by_length
-                .get(&4usize)
-                .cloned()
-                .unwrap()
-                .clone(),
+        Self::insert_known_segment_count_pattern(
+            &mut digit_patterns,
+            4,
+            4,
+            &signal_patterns_by_length,
         );
-        digit_patterns.insert(
-            8u8,
-            signal_patterns_by_length
-                .get(&7usize)
-                .cloned()
-                .unwrap()
-                .clone(),
+        Self::insert_known_segment_count_pattern(
+            &mut digit_patterns,
+            8,
+            7,
+            &signal_patterns_by_length,
         );
+        // Now let's work out which segment is which.
+        // We know the top segment, because it's present in 7 but not 1.
         let top = (digit_patterns.get(&7u8).unwrap() - digit_patterns.get(&1u8).unwrap())
             .into_iter()
             .next()
             .unwrap();
+        // We now do frequency analysis on the remaining segments.
         let mut count_by_char: HashMap<char, usize> = HashMap::new();
         for ch in self.signal_patterns.iter().flatten() {
             *count_by_char.entry(*ch).or_default() += 1;
@@ -86,56 +83,39 @@ impl Entry {
         for (ch, count) in count_by_char.iter() {
             chars_by_count.entry(*count).or_default().push(*ch);
         }
-        let br = chars_by_count
-            .get(&9usize)
-            .unwrap()
-            .iter()
-            .cloned()
-            .next()
-            .unwrap();
-        let bl = chars_by_count
-            .get(&4usize)
-            .unwrap()
-            .iter()
-            .cloned()
-            .next()
-            .unwrap();
-        let tl = chars_by_count
-            .get(&6usize)
-            .unwrap()
-            .iter()
-            .cloned()
-            .next()
-            .unwrap();
-        let mut tr_possibles: SegmentSet = chars_by_count
-            .get(&8usize)
-            .unwrap()
-            .iter()
-            .cloned()
-            .collect();
+        // Three segments have a unique number of occurrences across
+        // the various digits.
+        let br = Self::get_unique_segment_frequency(&chars_by_count, 9);
+        let bl = Self::get_unique_segment_frequency(&chars_by_count, 4);
+        let tl = Self::get_unique_segment_frequency(&chars_by_count, 6);
+        // Top right is illuminated as frequently as top, but we already know
+        // which segment is top.
+        let mut tr_possibles = Self::get_segment_frequency(&chars_by_count, 8);
         tr_possibles.remove(&top);
+        // So there's only one possibility left.
         let tr = tr_possibles.into_iter().next().unwrap();
+        // Next we work out the middle segment.
+        // We know it appears within the digit 4, and we know it isn't
+        // top left, top right or bottom right.
         let mut mid_possibles = digit_patterns.get(&4u8).unwrap().clone();
         mid_possibles.remove(&tl);
         mid_possibles.remove(&tr);
         mid_possibles.remove(&br);
+        // So again there's only one possibility left.
         let mid = mid_possibles.into_iter().next().unwrap();
-        let mut bot_possibles: SegmentSet = chars_by_count
-            .get(&7usize)
-            .unwrap()
-            .iter()
-            .cloned()
-            .collect();
+        // Finally the bottom segment. It appears in 7 digits;
+        // so does the middle segment but we can eliminate that.
+        let mut bot_possibles = Self::get_segment_frequency(&chars_by_count, 7);
         bot_possibles.remove(&mid);
         let bot = bot_possibles.into_iter().next().unwrap();
-        //println!("Pattern: top={}, TL={}, TR={}, mid={}, BL={}, BR={}, bot={}", top, tl, tr, mid, bl, br, bot);
-        insert_digit_pattern(&mut digit_patterns, 0u8, &[top, tl, tr, bl, br, bot]);
-        insert_digit_pattern(&mut digit_patterns, 2u8, &[top, tr, mid, bl, bot]);
-        insert_digit_pattern(&mut digit_patterns, 3u8, &[top, tr, mid, br, bot]);
-        insert_digit_pattern(&mut digit_patterns, 5u8, &[top, tl, mid, br, bot]);
-        insert_digit_pattern(&mut digit_patterns, 6u8, &[top, tl, mid, bl, br, bot]);
-        insert_digit_pattern(&mut digit_patterns, 9u8, &[top, tl, tr, mid, br, bot]);
-
+        // So now we know which segment is which, we can fill in the
+        // pattern for each remaining digit.
+        Self::insert_digit_pattern(&mut digit_patterns, 0u8, &[top, tl, tr, bl, br, bot]);
+        Self::insert_digit_pattern(&mut digit_patterns, 2u8, &[top, tr, mid, bl, bot]);
+        Self::insert_digit_pattern(&mut digit_patterns, 3u8, &[top, tr, mid, br, bot]);
+        Self::insert_digit_pattern(&mut digit_patterns, 5u8, &[top, tl, mid, br, bot]);
+        Self::insert_digit_pattern(&mut digit_patterns, 6u8, &[top, tl, mid, bl, br, bot]);
+        Self::insert_digit_pattern(&mut digit_patterns, 9u8, &[top, tl, tr, mid, br, bot]);
         digit_patterns
     }
 
@@ -150,10 +130,51 @@ impl Entry {
         }
         answer
     }
-}
 
-fn insert_digit_pattern(digits: &mut HashMap<u8, SegmentSet>, digit: u8, chars: &[char]) {
-    digits.insert(digit, chars.iter().cloned().collect());
+    fn get_segment_frequency(
+        chars_by_count: &HashMap<usize, Vec<char>>,
+        count: usize,
+    ) -> SegmentSet {
+        chars_by_count
+            .get(&count)
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    fn get_unique_segment_frequency(
+        chars_by_count: &HashMap<usize, Vec<char>>,
+        count: usize,
+    ) -> char {
+        chars_by_count
+            .get(&count)
+            .unwrap()
+            .iter()
+            .cloned()
+            .next()
+            .unwrap()
+    }
+
+    fn insert_digit_pattern(digits: &mut HashMap<u8, SegmentSet>, digit: u8, chars: &[char]) {
+        digits.insert(digit, chars.iter().cloned().collect());
+    }
+
+    fn insert_known_segment_count_pattern(
+        digits: &mut HashMap<u8, SegmentSet>,
+        digit: u8,
+        count: usize,
+        signal_patterns_by_length: &HashMap<usize, &SegmentSet>,
+    ) {
+        digits.insert(
+            digit,
+            signal_patterns_by_length
+                .get(&count)
+                .cloned()
+                .unwrap()
+                .clone(),
+        );
+    }
 }
 
 fn sum_digits(digits: Vec<u8>) -> u32 {
