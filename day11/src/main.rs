@@ -14,32 +14,14 @@ static INPUT: &str = "5483143223
 fn adjacents(x: usize, y: usize, grid: &Vec<Vec<u32>>) -> impl Iterator<Item = (usize, usize)> {
     let w = grid[0].len();
     let h = grid.len();
-    let mut adjacents = Vec::new();
-    if x > 0 {
-        adjacents.push((x - 1, y)); // left
-        if y > 0 {
-            adjacents.push((x - 1, y - 1)); // up & left
-        }
-        if y < h - 1 {
-            adjacents.push((x - 1, y + 1)); // down & left
-        }
-    }
-    if y > 0 {
-        adjacents.push((x, y - 1)); // up
-    }
-    if x < w - 1 {
-        adjacents.push((x + 1, y)); // right
-        if y < h - 1 {
-            adjacents.push((x + 1, y + 1)); // down and right
-        }
-        if y > 0 {
-            adjacents.push((x + 1, y - 1)); // up and right
-        }
-    }
-    if y < h - 1 {
-        adjacents.push((x, y + 1)); // down
-    }
-    adjacents.into_iter()
+    (-1isize..=1isize)
+        .cartesian_product(-1isize..=1isize)
+        .filter(|(dx, dy)| *dx != 0 || *dy != 0)
+        .map(move |(dx, dy)| (x as isize + dx, y as isize + dy))
+        .filter(move |(x, y)| {
+            *x >= 0isize && *y >= 0isize && *x < (w as isize) && *y < (h as isize)
+        })
+        .map(|(x, y)| (x as usize, y as usize))
 }
 
 fn main() {
@@ -59,10 +41,7 @@ fn main() {
         for cell in grid.iter_mut().map(|row| row.iter_mut()).flatten() {
             *cell += 1;
         }
-        let mut flashers = (0..w)
-            .cartesian_product(0..h)
-            .filter(|(x, y)| grid[*y][*x] > 9 && grid[*y][*x] != u32::MAX)
-            .collect_vec();
+        let mut flashers = get_flashers(w, h, &grid);
         while !flashers.is_empty() {
             for (x, y) in flashers.into_iter() {
                 flashes_this_try += 1;
@@ -73,10 +52,7 @@ fn main() {
                     }
                 }
             }
-            flashers = (0..w)
-                .cartesian_product(0..h)
-                .filter(|(x, y)| grid[*y][*x] > 9 && grid[*y][*x] != u32::MAX)
-                .collect_vec();
+            flashers = get_flashers(w, h, &grid);
         }
         for cell in grid.iter_mut().map(|row| row.iter_mut()).flatten() {
             if *cell > 9 {
@@ -85,10 +61,17 @@ fn main() {
         }
         println!("Flashes on step {} = {}", step, flashes_this_try);
         total_flashes += flashes_this_try;
-        if flashes_this_try == w*h {
+        if flashes_this_try == w * h {
             println!("First total flash={}", step);
             break;
         }
     }
     println!("Flashes to step 100 = {}", total_flashes);
+}
+
+fn get_flashers(w: usize, h: usize, grid: &Vec<Vec<u32>>) -> Vec<(usize, usize)> {
+    (0..w)
+        .cartesian_product(0..h)
+        .filter(|(x, y)| grid[*y][*x] > 9 && grid[*y][*x] != u32::MAX)
+        .collect_vec()
 }
