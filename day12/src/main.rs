@@ -10,6 +10,36 @@ b-d
 A-end
 b-end";
 
+static MEDIUM_INPUT: &str = "dc-end
+HN-start
+start-kj
+dc-start
+dc-HN
+LN-dc
+HN-end
+kj-sa
+kj-HN
+kj-dc";
+
+static BIG_INPUT: &str = "fs-end
+he-DX
+fs-he
+start-DX
+pj-DX
+end-zg
+zg-sl
+zg-pj
+pj-he
+RW-he
+fs-DX
+pj-RW
+zg-RW
+start-pj
+he-WI
+zg-he
+pj-fs
+start-RW";
+
 #[derive(Hash, Eq, PartialEq)]
 struct Edge<'a>(&'a str, &'a str);
 
@@ -21,15 +51,9 @@ impl<'a> Edge<'a> {
     fn flip(&self) -> Self {
         Edge(self.1, self.0)
     }
-    fn nodes(&self) -> impl Iterator<Item = &str> {
-        [self.0, self.1].into_iter()
-    }
 }
 
 fn prefix_ok<'a>(path: &Vec<&'a str>) -> bool {
-    if path[0] != "start" {
-        return false;
-    }
     let mut small_nodes_visited = HashSet::new();
     small_nodes_visited.insert("start");
     for (i, node) in path.iter().enumerate() {
@@ -43,14 +67,13 @@ fn prefix_ok<'a>(path: &Vec<&'a str>) -> bool {
             }
         }
     }
-    println!("OK prefix {:?}", path);
     true
 }
 
 static NO_PATHS: Vec<&str> = Vec::new();
 
-fn main() {
-    let edges = INPUT.lines().map(Edge::parse);
+fn find_paths(input: &str) -> usize {
+    let edges = input.lines().map(Edge::parse);
     let edges = edges
         .map(|e| [e.flip(), e].into_iter())
         .flatten()
@@ -86,4 +109,24 @@ fn main() {
         explored_prefixes.insert(prefix);
     }
     println!("Paths={}", found_paths.len());
+    found_paths.len()
+}
+
+fn main() {
+    find_paths(INPUT);
+}
+
+#[test]
+fn test_small() {
+    assert_eq!(find_paths(INPUT), 10);
+}
+
+#[test]
+fn test_medium() {
+    assert_eq!(find_paths(MEDIUM_INPUT), 19);
+}
+
+#[test]
+fn test_big() {
+    assert_eq!(find_paths(BIG_INPUT), 226);
 }
