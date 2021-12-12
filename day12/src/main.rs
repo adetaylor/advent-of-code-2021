@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
-
+#[cfg(test)]
 static INPUT: &str = "start-A
 start-b
 A-c
@@ -10,6 +9,7 @@ b-d
 A-end
 b-end";
 
+#[cfg(test)]
 static MEDIUM_INPUT: &str = "dc-end
 HN-start
 start-kj
@@ -21,6 +21,7 @@ kj-sa
 kj-HN
 kj-dc";
 
+#[cfg(test)]
 static BIG_INPUT: &str = "fs-end
 he-DX
 fs-he
@@ -53,17 +54,23 @@ impl<'a> Edge<'a> {
     }
 }
 
-fn prefix_ok<'a>(path: &Vec<&'a str>) -> bool {
+fn prefix_ok(path: &[&str], revisit_small_cave: bool) -> bool {
     let mut small_nodes_visited = HashSet::new();
     small_nodes_visited.insert("start");
+    let mut small_node_revisited = false;
     for (i, node) in path.iter().enumerate() {
         if i == 0 {
             continue;
         }
-        if &node.to_lowercase() == *node {
+        if node.to_lowercase() == *node {
             let newly_visited = small_nodes_visited.insert(node);
             if !newly_visited {
-                return false;
+                if revisit_small_cave && !small_node_revisited && *node != "start" && *node != "end"
+                {
+                    small_node_revisited = true;
+                } else {
+                    return false;
+                }
             }
         }
     }
@@ -72,7 +79,7 @@ fn prefix_ok<'a>(path: &Vec<&'a str>) -> bool {
 
 static NO_PATHS: Vec<&str> = Vec::new();
 
-fn find_paths(input: &str) -> usize {
+fn find_paths(input: &str, revisit_small_cave: bool) -> usize {
     let edges = input.lines().map(Edge::parse);
     let edges = edges
         .map(|e| [e.flip(), e].into_iter())
@@ -84,12 +91,11 @@ fn find_paths(input: &str) -> usize {
     }
     let mut found_paths = Vec::new();
     let mut explored_prefixes = HashSet::new();
-    let mut prefixes_to_explore = Vec::new();
-    prefixes_to_explore.push(vec!["start"]);
+    let mut prefixes_to_explore = vec![vec!["start"]];
     while let Some(prefix) = prefixes_to_explore.pop() {
         let new_nodes = paths_from_node
             .get(prefix.last().unwrap())
-            .unwrap_or_else(|| &NO_PATHS);
+            .unwrap_or(&NO_PATHS);
         let new_prefixes = new_nodes
             .iter()
             .map(|new_node| {
@@ -99,7 +105,7 @@ fn find_paths(input: &str) -> usize {
             })
             .filter(|prefix| !explored_prefixes.contains(prefix));
         for new_prefix in new_prefixes {
-            if prefix_ok(&new_prefix) {
+            if prefix_ok(&new_prefix, revisit_small_cave) {
                 if *new_prefix.last().unwrap() == "end" {
                     found_paths.push(new_prefix.clone());
                 }
@@ -113,20 +119,61 @@ fn find_paths(input: &str) -> usize {
 }
 
 fn main() {
-    find_paths(INPUT);
+    find_paths(
+        "yb-pi
+jg-ej
+yb-KN
+LD-start
+end-UF
+UF-yb
+yb-xd
+qx-yb
+xd-end
+jg-KN
+start-qx
+start-ej
+qx-LD
+jg-LD
+xd-LD
+ej-qx
+end-KN
+DM-xd
+jg-yb
+ej-LD
+qx-UF
+UF-jg
+qx-jg
+xd-UF",
+        true,
+    );
 }
 
 #[test]
 fn test_small() {
-    assert_eq!(find_paths(INPUT), 10);
+    assert_eq!(find_paths(INPUT, false), 10);
 }
 
 #[test]
 fn test_medium() {
-    assert_eq!(find_paths(MEDIUM_INPUT), 19);
+    assert_eq!(find_paths(MEDIUM_INPUT, false), 19);
 }
 
 #[test]
 fn test_big() {
-    assert_eq!(find_paths(BIG_INPUT), 226);
+    assert_eq!(find_paths(BIG_INPUT, false), 226);
+}
+
+#[test]
+fn test_small_revisiting() {
+    assert_eq!(find_paths(INPUT, true), 36);
+}
+
+#[test]
+fn test_medium_revisiting() {
+    assert_eq!(find_paths(MEDIUM_INPUT, true), 103);
+}
+
+#[test]
+fn test_big_revisiting() {
+    assert_eq!(find_paths(BIG_INPUT, true), 3509);
 }
