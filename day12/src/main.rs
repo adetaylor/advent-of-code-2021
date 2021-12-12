@@ -2,6 +2,11 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
+static TINY_INPUT: &str = "start-A
+b-A
+start-b
+A-end";
+
 static INPUT: &str = "start-A
 start-b
 A-c
@@ -34,6 +39,7 @@ fn path_ok<'a>(path: &Vec<&'a &'a str>, edges: &HashSet<Edge>) -> bool {
         return false;
     }
     let mut small_nodes_visited = HashSet::new();
+    small_nodes_visited.insert("start");
     for (i, node) in path.iter().enumerate() {
         if i == 0 {
             continue;
@@ -49,11 +55,12 @@ fn path_ok<'a>(path: &Vec<&'a &'a str>, edges: &HashSet<Edge>) -> bool {
             }
         }
     }
+    println!("OK path {:?}", path);
     true
 }
 
 fn main() {
-    let edges = INPUT.lines().map(Edge::parse);
+    let edges = TINY_INPUT.lines().map(Edge::parse);
     let edges = edges
         .map(|e| [e.flip(), e].into_iter())
         .flatten()
@@ -63,7 +70,10 @@ fn main() {
     let paths = possible_path_lengths
         .into_iter()
         .map(|l| nodes.iter().permutations(l))
-        .flatten()
-        .filter(|p| path_ok(p, &edges));
-    println!("Paths={}", paths.count());
+        .flatten();
+    // println!("Paths to consider {}", paths.count());
+    let ok_paths = paths
+        .filter(|p| path_ok(p, &edges))
+        .collect::<HashSet<_>>();
+    println!("Paths={}", ok_paths.len());
 }
