@@ -1,11 +1,6 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-
-static TINY_INPUT: &str = "start-A
-b-A
-start-b
-A-end";
 
 static INPUT: &str = "start-A
 start-b
@@ -31,11 +26,8 @@ impl<'a> Edge<'a> {
     }
 }
 
-fn path_ok<'a>(path: &Vec<&'a &'a str>, edges: &HashSet<Edge>) -> bool {
-    if *path[0] != "start" {
-        return false;
-    }
-    if **path.last().unwrap() != "end" {
+fn prefix_ok<'a>(path: &Vec<&'a str>) -> bool {
+    if path[0] != "start" {
         return false;
     }
     let mut small_nodes_visited = HashSet::new();
@@ -44,10 +36,6 @@ fn path_ok<'a>(path: &Vec<&'a &'a str>, edges: &HashSet<Edge>) -> bool {
         if i == 0 {
             continue;
         }
-        let e = Edge(path[i - 1], node);
-        if !edges.contains(&e) {
-            return false;
-        }
         if &node.to_lowercase() == *node {
             let newly_visited = small_nodes_visited.insert(node);
             if !newly_visited {
@@ -55,25 +43,47 @@ fn path_ok<'a>(path: &Vec<&'a &'a str>, edges: &HashSet<Edge>) -> bool {
             }
         }
     }
-    println!("OK path {:?}", path);
+    println!("OK prefix {:?}", path);
     true
 }
 
+static NO_PATHS: Vec<&str> = Vec::new();
+
 fn main() {
-    let edges = TINY_INPUT.lines().map(Edge::parse);
+    let edges = INPUT.lines().map(Edge::parse);
     let edges = edges
         .map(|e| [e.flip(), e].into_iter())
         .flatten()
         .collect::<HashSet<_>>();
-    let nodes = edges.iter().map(Edge::nodes).flatten().collect_vec();
-    let possible_path_lengths = 1..nodes.len();
-    let paths = possible_path_lengths
-        .into_iter()
-        .map(|l| nodes.iter().permutations(l))
-        .flatten();
-    // println!("Paths to consider {}", paths.count());
-    let ok_paths = paths
-        .filter(|p| path_ok(p, &edges))
-        .collect::<HashSet<_>>();
-    println!("Paths={}", ok_paths.len());
+    let mut paths_from_node: HashMap<&str, Vec<_>> = HashMap::new();
+    for e in edges {
+        paths_from_node.entry(e.0).or_default().push(e.1);
+    }
+    let mut found_paths = Vec::new();
+    let mut explored_prefixes = HashSet::new();
+    let mut prefixes_to_explore = Vec::new();
+    prefixes_to_explore.push(vec!["start"]);
+    while let Some(prefix) = prefixes_to_explore.pop() {
+        let new_nodes = paths_from_node
+            .get(prefix.last().unwrap())
+            .unwrap_or_else(|| &NO_PATHS);
+        let new_prefixes = new_nodes
+            .iter()
+            .map(|new_node| {
+                let mut new_prefix = prefix.clone();
+                new_prefix.push(new_node);
+                new_prefix
+            })
+            .filter(|prefix| !explored_prefixes.contains(prefix));
+        for new_prefix in new_prefixes {
+            if prefix_ok(&new_prefix) {
+                if *new_prefix.last().unwrap() == "end" {
+                    found_paths.push(new_prefix.clone());
+                }
+                prefixes_to_explore.push(new_prefix);
+            }
+        }
+        explored_prefixes.insert(prefix);
+    }
+    println!("Paths={}", found_paths.len());
 }
